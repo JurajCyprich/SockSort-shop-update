@@ -34,6 +34,34 @@ try {
 } catch(e) {
   console.warn('Firebase init failed:', e);
 }
+
+// ── Global error catcher — shows a visible banner instead of silent blank screen ──
+function showGlobalError(msg){
+  try{
+    var box = document.getElementById('global-error-box');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'global-error-box';
+      box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a0a0a;color:#ffb3b3;padding:14px 16px;font-family:monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:50vh;overflow-y:auto;border-bottom:2px solid #ff4444';
+      document.body.appendChild(box);
+    }
+    var p = document.createElement('div');
+    p.style.cssText='margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #5a2020';
+    p.textContent = msg;
+    box.appendChild(p);
+  }catch(e2){}
+}
+window.addEventListener('error', function(e){
+  var msg = '⚠️ JS CHYBA: ' + e.message + '\n📄 ' + (e.filename||'') + ':' + e.lineno + ':' + e.colno;
+  if(e.error && e.error.stack) msg += '\n' + e.error.stack;
+  showGlobalError(msg);
+});
+window.addEventListener('unhandledrejection', function(e){
+  var reason = e.reason;
+  var msg = '⚠️ PROMISE CHYBA: ' + (reason && reason.message ? reason.message : String(reason));
+  if(reason && reason.stack) msg += '\n' + reason.stack;
+  showGlobalError(msg);
+});
 </script>
 <style>
 :root{
