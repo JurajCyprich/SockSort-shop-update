@@ -7,6 +7,7 @@
 <meta name="description" content="Inteligentné párovanie ponožiek pre celú rodinu">
 <meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SockSort">
 <link rel="manifest" href="manifest.json">
@@ -2756,13 +2757,18 @@ function _doDeleteSock(sockId){
 }
 
 // ══════════════════════════════════════════════
-// PWA — Service Worker registration
+// PWA — Service Worker DISABLED (was causing stale-cache issues).
+// Actively unregister any previously installed SW + clear its caches.
 // ══════════════════════════════════════════════
-// Service Worker registration
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js')
-    .then(()=>console.log('SW registered'))
-    .catch(e=>console.warn('SW skipped:',e.message));
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(reg=>reg.unregister());
+  }).catch(()=>{});
+  if(window.caches && caches.keys){
+    caches.keys().then(keys=>{
+      keys.forEach(k=>caches.delete(k));
+    }).catch(()=>{});
+  }
 }
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
@@ -2808,6 +2814,11 @@ async function checkAdminInFirebase(){
 function updateAdminUI(){
   const asl = document.getElementById('admin-settings-link');
   if(asl) asl.style.display = isAdmin()?'block':'none';
+  // If shop screen is currently open, re-render it so the admin "add product" button appears/disappears correctly
+  const shopScreen = document.getElementById('screen-shop');
+  if(shopScreen && shopScreen.classList.contains('active')){
+    renderShop();
+  }
 }
 
 function authTab(tab){
@@ -2842,7 +2853,17 @@ function registerEmail(){
 
 function loginGoogle(){
   const provider=new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e=>showToast('❌ '+e.message, 4000));
+  // Try popup first (faster UX on desktop), fall back to redirect if blocked by COOP/popup-blocker
+  auth.signInWithPopup(provider).catch(e=>{
+    const popupBlockedCodes = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
+    if(popupBlockedCodes.includes(e.code)){
+      // Fall back to full-page redirect — avoids Cross-Origin-Opener-Policy issues entirely
+      showToast('↪️ Presmerúvam na Google...', 3000);
+      auth.signInWithRedirect(provider);
+    } else {
+      showToast('❌ '+e.message, 4000);
+    }
+  });
 }
 
 function authErrMsg(code){
@@ -2861,6 +2882,19 @@ function signOut(){
   auth.signOut().then(()=>{
     document.getElementById('auth-screen').classList.remove('done');
     document.getElementById('app').style.display='none';
+  });
+}
+
+// Handle the result of a Google sign-in redirect (if user came back from one).
+// Must be called early — errors here are surfaced as a toast once the UI is ready.
+if(auth){
+  auth.getRedirectResult().then(result=>{
+    if(result && result.user){
+      // Successful redirect sign-in — onAuthStateChanged below will pick it up automatically.
+    }
+  }).catch(e=>{
+    console.warn('Redirect sign-in error:', e);
+    setTimeout(()=>showToast('❌ Prihlásenie zlyhalo: '+(e.message||e.code), 5000), 500);
   });
 }
 
@@ -2932,12 +2966,7 @@ if(auth){
   }
 }
 
-function isAdmin(){
-  if(!currentUser) return false;
-  if(currentUser.email===ADMIN_EMAIL) return true;
-  const myM=S.family.members.find(m=>m.isMe);
-  return myM?.isAdmin||(S.family.adminId&&myM?.id===S.family.adminId);
-}
+// (duplicate isAdmin() removed — the correct version with Firebase admin check lives above)
 
 // ══════════════════════════════════════════════
 // SHOP
@@ -2977,23 +3006,27 @@ function renderShopCats(){
 function renderShop(){
   const grid=document.getElementById('shop-grid');
   const filtered=shopCatFilter==='Všetko'?shopProducts:shopProducts.filter(p=>p.category===shopCatFilter);
-  if(!filtered.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><div style="font-size:44px;margin-bottom:12px">🛍️</div><div>Žiadne produkty</div></div>';
-    return;
-  }
   grid.innerHTML='';
-  filtered.forEach((prod,i)=>{
-    const card=document.createElement('div');
-    card.className='prod-card';
-    card.style.animationDelay=(i*.06)+'s';
-    card.innerHTML=
-      `<div class="prod-img">${prod.img?`<img src="${prod.img}" loading="lazy">`:`<div class="prod-ph">📦</div>`}</div>`+
-      (prod.badge?`<div class="prod-badge">${prod.badge}</div>`:'')+
-      `<div class="prod-footer"><div class="prod-name">${prod.name}</div>`+
-      `<div class="prod-price">${prod.price}€<span class="prod-price-old">${prod.priceOld?prod.priceOld+'€':''}</span></div></div>`;
-    card.onclick=()=>openProduct(prod);
-    grid.appendChild(card);
-  });
+
+  if(!filtered.length){
+    const empty=document.createElement('div');
+    empty.style.cssText='grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)';
+    empty.innerHTML='<div style="font-size:44px;margin-bottom:12px">🛍️</div><div>'+(shopProducts.length?'Žiadne produkty v tejto kategórii':'Zatiaľ žiadne produkty v shope')+'</div>';
+    grid.appendChild(empty);
+  } else {
+    filtered.forEach((prod,i)=>{
+      const card=document.createElement('div');
+      card.className='prod-card';
+      card.style.animationDelay=(i*.06)+'s';
+      card.innerHTML=
+        `<div class="prod-img">${prod.img?`<img src="${prod.img}" loading="lazy">`:`<div class="prod-ph">📦</div>`}</div>`+
+        (prod.badge?`<div class="prod-badge">${prod.badge}</div>`:'')+
+        `<div class="prod-footer"><div class="prod-name">${prod.name}</div>`+
+        `<div class="prod-price">${prod.price}€<span class="prod-price-old">${prod.priceOld?prod.priceOld+'€':''}</span></div></div>`;
+      card.onclick=()=>openProduct(prod);
+      grid.appendChild(card);
+    });
+  }
   // Admin add button in shop
   if(isAdmin()){
     const adminBtn=document.createElement('div');
