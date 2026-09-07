@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SockSort Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://widget.packeta.com/v6/www/js/library.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB-cIZhwfjaol2nTxan4KpAAa8gmFwdRMY",
+  authDomain: "socksort-4930e.firebaseapp.com",
+  databaseURL: "https://socksort-4930e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "socksort-4930e",
+  storageBucket: "socksort-4930e.firebasestorage.app",
+  messagingSenderId: "887343680663",
+  appId: "1:887343680663:web:f826d05d534b6d9e592dd2"
+};
+let db = null;
+try { firebase.initializeApp(firebaseConfig); db = firebase.database(); }
+catch(e){ console.warn('Firebase init failed:', e); }
+
+const CLOUDINARY_CLOUD = 'dumdxoeny';
+const CLOUDINARY_PRESET = 'SockSort';
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
+async function uploadToCloudinary(base64){
+  const fd=new FormData();
+  fd.append('file',base64); fd.append('upload_preset',CLOUDINARY_PRESET); fd.append('folder','socksort/shop');
+  const r=await fetch(CLOUDINARY_UPLOAD_URL,{method:'POST',body:fd});
+  if(!r.ok) throw new Error('Cloudinary upload zlyhal: '+r.status);
+  return (await r.json()).secure_url;
+}
+</script>
+<style>
+:root{
+  --bg:#0a0a0a;--s1:#111;--s2:#181818;--s3:#222;--s4:#2a2a2a;
+  --border:#2c2c2c;--border2:#383838;
+  --text:#f0ece4;--muted:#555;--muted2:#888;
+  --green:#34d399;--red:#f87171;--blue:#60a5fa;
+  --r:14px;--sh:0 4px 24px rgba(0,0,0,.5);
+  --ac:#f0d050;--ac2:#d4b800;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.4}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--s4);border-radius:2px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.07)}100%{transform:scale(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes checkDraw{from{stroke-dashoffset:40}to{stroke-dashoffset:0}}
+
+#app{height:100%;display:flex;flex-direction:column;animation:fadeUp .4s ease both}
+
+/* TOPBAR */
+.topbar{height:56px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;position:relative}
+.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:.3}
+.logo{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.logo span{color:var(--ac)}
+.mode-pill{margin-left:auto;display:flex;align-items:center;gap:8px}
+.admin-toggle{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border2);border-radius:100px;padding:5px 12px 5px 6px;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted2);transition:.15s}
+.admin-toggle.on{background:rgba(240,208,80,.12);border-color:var(--ac);color:var(--ac)}
+.admin-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.admin-toggle.on .admin-dot{background:var(--ac);box-shadow:0 0 6px var(--ac)}
+.cart-btn{position:relative;background:var(--s2);border:1px solid var(--border2);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px;cursor:pointer;transition:.15s}
+.cart-btn:hover{border-color:var(--ac)}
+.cart-count{position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;font-weight:800;font-family:'Syne',sans-serif;display:none;align-items:center;justify-content:center}
+.cart-count.show{display:flex}
+
+/* SCREENS */
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;display:none;-webkit-overflow-scrolling:touch}
+.screen.active{display:block}
+
+/* HERO */
+.shop-hero{margin:16px;background:linear-gradient(135deg,var(--s2),var(--s1));border:1px solid var(--border);border-radius:var(--r);padding:22px;position:relative;overflow:hidden;animation:fadeUp .4s ease both}
+.shop-hero::before{content:'🧦';position:absolute;right:-12px;bottom:-14px;font-size:90px;opacity:.06;transform:rotate(-18deg);pointer-events:none}
+.shop-hero h1{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.02em}
+.shop-hero p{font-size:13px;color:var(--muted2);margin-top:5px;max-width:80%}
+
+/* SEARCH + CATS */
+.shop-toolbar{padding:0 16px;margin-bottom:14px}
+.search-row{position:relative;margin-bottom:12px}
+.search-input{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:11px;padding:11px 14px 11px 38px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:.2s}
+.search-input:focus{border-color:var(--ac)}
+.search-input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.5}
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat-chip{flex-shrink:0;border:1.5px solid var(--border2);background:var(--s2);border-radius:100px;padding:7px 15px;font-size:12.5px;font-weight:600;color:var(--muted2);cursor:pointer;transition:.15s;white-space:nowrap}
+.cat-chip.active{background:var(--ac);border-color:var(--ac);color:#0a0a0a}
+
+/* PRODUCT GRID */
+.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 12px 24px}
+.prod-card{background:var(--s1);border-radius:10px;overflow:hidden;border:1.5px solid var(--border);cursor:pointer;transition:.2s;position:relative;animation:fadeUp .4s ease both}
+.prod-card:hover{transform:translateY(-2px);box-shadow:0 5px 18px rgba(0,0,0,.4);border-color:var(--border2)}
+.prod-img{aspect-ratio:1;background:var(--s2);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+.prod-img img{width:100%;height:100%;object-fit:cover;display:block;transition:.35s}
+.prod-card:hover .prod-img img{transform:scale(1.06)}
+.prod-ph{font-size:26px;opacity:.5}
+.prod-badge{position:absolute;top:5px;left:5px;background:var(--ac);color:#0a0a0a;border-radius:100px;padding:2px 7px;font-size:8px;font-weight:800;font-family:'Syne',sans-serif;letter-spacing:.03em}
+.prod-stock-badge{position:absolute;top:5px;right:5px;background:rgba(248,113,113,.92);color:#fff;border-radius:100px;padding:2px 7px;font-size:8px;font-weight:800;font-family:'Syne',sans-serif}
+.prod-footer{padding:7px 8px 8px}
+.prod-cat{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:2px}
+.prod-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:26px}
+.prod-price-row{display:flex;align-items:baseline;gap:4px;margin-top:3px}
+.prod-price{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--ac)}
+.prod-price-old{font-size:9px;color:var(--muted);text-decoration:line-through}
+
+/* Admin add card */
+.add-prod-card{display:flex;align-items:center;justify-content:center;min-height:178px;border:2px dashed var(--border2);border-radius:14px;cursor:pointer;transition:.2s;animation:fadeUp .4s ease both;background:var(--s1)}
+.add-prod-card:hover{border-color:var(--ac);background:rgba(240,208,80,.05)}
+.add-prod-card .inner{text-align:center;color:var(--muted2)}
+.add-prod-card .inner .ic{font-size:30px;margin-bottom:6px}
+.add-prod-card .inner .lbl{font-size:12px;font-weight:700;font-family:'Syne',sans-serif}
+
+.empty-state{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-state .ei{font-size:46px;margin-bottom:12px;display:block;animation:bob 3s ease-in-out infinite}
+.empty-state p{font-size:13.5px;line-height:1.6}
+
+/* CART FAB removed in favor of topbar cart icon, kept screen padding */
+.shop-wrap-pad{padding-bottom:30px}
+
+/* CART SCREEN */
+.cart-wrap{padding:16px 16px 110px}
+.screen-title{font-family:'Syne',sans-serif;font-size:23px;font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
+.cart-item{background:var(--s1);border:1.5px solid var(--border);border-radius:13px;padding:13px;display:flex;gap:12px;margin-bottom:9px;align-items:center;animation:fadeUp .3s ease both}
+.cart-item-img{width:54px;height:54px;border-radius:9px;overflow:hidden;flex-shrink:0;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:22px}
+.cart-item-img img{width:100%;height:100%;object-fit:cover}
+.cart-item-info{flex:1;min-width:0}
+.cart-item-name{font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-item-variant{font-size:11px;color:var(--muted2);margin-top:1px}
+.cart-item-price{font-size:13px;color:var(--ac);font-weight:700;margin-top:3px;font-family:'Syne',sans-serif}
+.cart-qty{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.qty-btn{width:27px;height:27px;border-radius:50%;border:1.5px solid var(--border2);background:var(--s2);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;line-height:1}
+.qty-btn:hover{border-color:var(--ac);color:var(--ac)}
+.qty-num{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;min-width:18px;text-align:center}
+.cart-remove{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:4px;margin-left:2px;flex-shrink:0;transition:.15s}
+.cart-remove:hover{color:var(--red)}
+
+.cart-total-box{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin:16px 0}
+.cart-total-row{display:flex;justify-content:space-between;font-size:13.5px;color:var(--muted2);margin-bottom:9px}
+.cart-total-row.final{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);margin-bottom:0;padding-top:11px;border-top:1px solid var(--border)}
+
+.btn-y{width:100%;background:var(--ac);color:#0a0a0a;border:none;border-radius:12px;padding:15px;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:.15s;box-shadow:0 4px 20px rgba(240,208,80,.22)}
+.btn-y:hover{filter:brightness(1.07)}
+.btn-y:active{transform:scale(.98)}
+.btn-y:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;filter:none}
+.btn-ghost{width:100%;background:var(--s2);color:var(--text);border:1.5px solid var(--border2);border-radius:12px;padding:13px;font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;transition:.15s}
+.btn-ghost:hover{border-color:var(--ac);color:var(--ac)}
+
+/* ADMIN ORDERS */
+.orders-wrap{padding:16px 16px 30px}
+.order-card{background:var(--s1);border:1.5px solid var(--border);border-radius:13px;padding:15px;margin-bottom:9px;cursor:pointer;transition:.15s;animation:fadeUp .3s ease both}
+.order-card:hover{background:var(--s2)}
+.order-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.order-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.order-status{font-size:9.5px;font-weight:800;font-family:'Syne',sans-serif;padding:3px 10px;border-radius:100px;letter-spacing:.03em}
+.status-new{background:rgba(240,208,80,.15);color:var(--ac);border:1px solid rgba(240,208,80,.3)}
+.status-sent{background:rgba(96,165,250,.15);color:var(--blue);border:1px solid rgba(96,165,250,.3)}
+.status-done{background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.order-meta{font-size:12px;color:var(--muted2)}
+.order-date{font-size:10.5px;color:var(--muted);margin-top:4px}
+
+/* MODALS */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:.25s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--s1);border-radius:22px 22px 0 0;border-top:1px solid var(--border);padding:0 0 30px;width:100%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
+.modal-bg.open .modal{transform:none}
+.mhandle{width:38px;height:4px;background:var(--s4);border-radius:2px;margin:13px auto 0;flex-shrink:0}
+.mheader{padding:16px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mtitle{font-family:'Syne',sans-serif;font-size:17px;font-weight:800}
+.mclose{background:var(--s3);border:none;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted2);transition:.15s;flex-shrink:0}
+.mclose:hover{color:var(--text);background:var(--s4)}
+.mbody{padding:16px 20px 4px;overflow-y:auto}
+
+/* product detail */
+.pd-img-wrap{width:100%;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:var(--s2);margin-bottom:16px;display:flex;align-items:center;justify-content:center}
+.pd-img-wrap img{width:100%;height:100%;object-fit:cover}
+.pd-img-wrap .ph{font-size:60px;opacity:.4}
+.pd-cat{font-size:10.5px;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px}
+.pd-name{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;margin-bottom:6px;line-height:1.25}
+.pd-price-row{display:flex;align-items:baseline;gap:9px;margin-bottom:14px}
+.pd-price{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--ac)}
+.pd-price-old{font-size:14px;color:var(--muted);text-decoration:line-through}
+.pd-desc{font-size:13.5px;color:var(--muted2);line-height:1.65;margin-bottom:16px}
+.pd-stock{font-size:12px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.pd-stock.ok{color:var(--green)}
+.pd-stock.low{color:var(--ac)}
+.pd-stock.out{color:var(--red)}
+
+.form-lbl{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+.owner-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.ochip{background:var(--s2);border:1.5px solid var(--border);border-radius:100px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.ochip:hover{border-color:var(--border2)}
+.ochip.on{background:rgba(240,208,80,.12);border-color:var(--ac);color:var(--ac)}
+
+.qty-row{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.qty-row .qty-btn{width:34px;height:34px;font-size:18px}
+.qty-row .qty-num{font-size:16px;min-width:24px}
+
+/* forms */
+.form-inp{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:11px;padding:13px 14px;font-size:14.5px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:.2s;margin-bottom:13px}
+.form-inp:focus{border-color:var(--ac)}
+.form-inp::placeholder{color:var(--muted)}
+textarea.form-inp{resize:vertical;min-height:64px;font-family:'DM Sans',sans-serif}
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.uarea{border:2px dashed var(--border2);border-radius:14px;aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.2s;position:relative;overflow:hidden;background:var(--s2);margin-bottom:14px}
+.uarea:hover{border-color:var(--ac);background:var(--s3)}
+.uarea input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uarea-icon{font-size:32px;margin-bottom:6px}
+.uarea-text{font-size:12.5px;color:var(--muted2);font-weight:500}
+
+/* checkout */
+.pay-option{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:11px;border:1.5px solid var(--border);cursor:pointer;transition:.15s;margin-bottom:8px;background:var(--s2)}
+.pay-option:hover{border-color:var(--border2)}
+.pay-option.on{border-color:var(--ac);background:rgba(240,208,80,.07)}
+.pay-icon{font-size:18px;flex-shrink:0}
+.pay-label{font-size:13.5px;font-weight:600;flex:1}
+.pay-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;position:relative;transition:.15s}
+.pay-option.on .pay-check{border-color:var(--ac)}
+.pay-option.on .pay-check::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--ac)}
+
+/* order success */
+.success-wrap{text-align:center;padding:30px 10px 10px}
+.success-icon{width:72px;height:72px;border-radius:50%;background:rgba(52,211,153,.12);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) both}
+.success-title{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;margin-bottom:8px}
+.success-sub{font-size:13.5px;color:var(--muted2);line-height:1.6;margin-bottom:22px}
+.order-num-box{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:18px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--ac)}
+
+/* toast */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--s2);border:1px solid var(--border2);color:var(--text);padding:11px 22px;border-radius:100px;font-size:13px;font-weight:600;z-index:9998;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;box-shadow:var(--sh)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* confirm */
+.confirm-msg{font-size:13.5px;color:var(--muted2);margin-bottom:18px;line-height:1.6}
+
+@media (max-width:380px){
+  .shop-grid{gap:9px}
+}
+
+/* ── ADMIN LOGIN ── */
+.admin-login-icon{font-size:14px}
+.pin-row{display:flex;gap:8px;margin-bottom:6px}
+.pin-box{flex:1;aspect-ratio:1;background:var(--s2);border:1.5px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text)}
+.pin-box.filled{border-color:var(--ac)}
+.admin-err{color:var(--red);font-size:12.5px;text-align:center;min-height:18px;margin-bottom:4px}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.numpad-btn{aspect-ratio:1.4;background:var(--s2);border:1.5px solid var(--border);border-radius:11px;font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text);cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center}
+.numpad-btn:hover{border-color:var(--ac);background:var(--s3)}
+.numpad-btn:active{transform:scale(.93)}
+.numpad-btn.wide{font-size:13px}
+.admin-status-row{display:flex;align-items:center;gap:8px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:11px;padding:11px 14px;margin-bottom:14px}
+.admin-status-row .ic{font-size:16px}
+.admin-status-row .txt{font-size:12.5px;color:var(--green);font-weight:600;flex:1}
+.admin-status-row button{background:none;border:none;color:var(--muted2);font-size:11.5px;font-weight:700;cursor:pointer;text-decoration:underline;flex-shrink:0}
+
+/* ── ADDRESS AUTOCOMPLETE ── */
+.addr-field-wrap{position:relative;margin-bottom:13px}
+.addr-field-wrap .form-inp{margin-bottom:0}
+.addr-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--s2);border:1.5px solid var(--border2);border-radius:11px;overflow:hidden;z-index:30;box-shadow:0 8px 28px rgba(0,0,0,.45);display:none;max-height:220px;overflow-y:auto}
+.addr-suggestions.show{display:block}
+.addr-sugg-item{padding:11px 14px;font-size:13px;cursor:pointer;transition:.12s;border-bottom:1px solid var(--border)}
+.addr-sugg-item:last-child{border-bottom:none}
+.addr-sugg-item:hover,.addr-sugg-item.hl{background:var(--s3)}
+.addr-sugg-main{font-weight:600;color:var(--text)}
+.addr-sugg-sub{font-size:11px;color:var(--muted2);margin-top:1px}
+.addr-sugg-loading{padding:13px 14px;font-size:12.5px;color:var(--muted2);display:flex;align-items:center;gap:8px}
+.addr-spinner{width:13px;height:13px;border:2px solid var(--s4);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+.addr-confirm{font-size:11.5px;color:var(--green);margin:-8px 0 13px;display:none;align-items:center;gap:5px}
+.addr-confirm.show{display:flex}
+.addr-attribution{font-size:9.5px;color:var(--muted);text-align:right;margin:-8px 0 13px}
+
+/* ── DELIVERY OPTIONS ── */
+.delivery-option{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:11px;border:1.5px solid var(--border);cursor:pointer;transition:.15s;margin-bottom:8px;background:var(--s2)}
+.delivery-option:hover{border-color:var(--border2)}
+.delivery-option.on{border-color:var(--ac);background:rgba(240,208,80,.07)}
+.delivery-icon-box{width:34px;height:34px;border-radius:9px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.delivery-info{flex:1}
+.delivery-label{font-size:13.5px;font-weight:700;font-family:'Syne',sans-serif}
+.delivery-sub{font-size:11px;color:var(--muted2);margin-top:1px}
+.delivery-price{font-size:13px;font-weight:700;color:var(--ac);font-family:'Syne',sans-serif;flex-shrink:0}
+
+/* ── EMAIL SETTINGS ── */
+.email-status-box{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:11px;margin-bottom:16px;font-size:12.5px}
+.email-status-box.ok{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+.email-status-box.off{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+.setup-steps{background:var(--s2);border-radius:11px;padding:14px 16px;margin-bottom:16px;font-size:12px;color:var(--muted2);line-height:1.8}
+.setup-steps b{color:var(--text)}
+.setup-steps a{color:var(--ac);text-decoration:none}
+
+/* ── PACKETA PICKUP POINT ── */
+.packeta-pick-btn{width:100%;background:var(--s2);border:1.5px dashed var(--border2);border-radius:11px;padding:14px;font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;color:var(--ac);cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:13px}
+.packeta-pick-btn:hover{border-color:var(--ac);background:rgba(240,208,80,.06)}
+.packeta-point-card{background:rgba(240,208,80,.07);border:1.5px solid var(--ac);border-radius:11px;padding:13px 14px;margin-bottom:13px;display:flex;gap:11px;align-items:flex-start}
+.packeta-point-icon{font-size:20px;flex-shrink:0;margin-top:1px}
+.packeta-point-info{flex:1;min-width:0}
+.packeta-point-name{font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700}
+.packeta-point-addr{font-size:11.5px;color:var(--muted2);margin-top:2px;line-height:1.5}
+.packeta-point-change{background:none;border:none;color:var(--ac);font-size:11.5px;font-weight:700;text-decoration:underline;cursor:pointer;flex-shrink:0;padding:2px}
+.packeta-unavailable{font-size:11.5px;color:var(--muted);text-align:center;padding:10px;margin-bottom:13px}
+
+/* ── PACKETA PICKUP POINT ── */
+.delivery-mode-tabs{display:flex;background:var(--s2);border-radius:11px;padding:4px;gap:4px;margin:-2px 0 14px;display:none}
+.delivery-mode-tabs.show{display:flex}
+.delivery-mode-tab{flex:1;border:none;background:none;padding:9px 6px;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--muted2);cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif}
+.delivery-mode-tab.active{background:var(--s3);color:var(--text)}
+
+.packeta-picker{display:none;margin-bottom:14px}
+.packeta-picker.show{display:block}
+.packeta-pick-btn{width:100%;background:var(--s2);border:1.5px dashed var(--border2);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s}
+.packeta-pick-btn:hover{border-color:var(--ac)}
+.packeta-pick-icon{font-size:22px;flex-shrink:0}
+.packeta-pick-text{flex:1;text-align:left}
+.packeta-pick-title{font-size:13.5px;font-weight:700;font-family:'Syne',sans-serif}
+.packeta-pick-sub{font-size:11.5px;color:var(--muted2);margin-top:2px}
+
+.packeta-point-card{background:rgba(240,208,80,.07);border:1.5px solid var(--ac);border-radius:12px;padding:14px;display:none;align-items:flex-start;gap:12px}
+.packeta-point-card.show{display:flex}
+.packeta-point-icon{width:36px;height:36px;border-radius:9px;background:var(--ac);color:#0a0a0a;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.packeta-point-info{flex:1;min-width:0}
+.packeta-point-name{font-size:13.5px;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:2px}
+.packeta-point-addr{font-size:11.5px;color:var(--muted2);line-height:1.5}
+.packeta-point-change{background:none;border:none;color:var(--ac);font-size:11.5px;font-weight:700;cursor:pointer;text-decoration:underline;margin-top:6px;padding:0}
+</style>
+</head>
+<body>
+
+<!-- ════ LOADING SPLASH ════ -->
+<div id="loading-splash" style="position:fixed;inset:0;z-index:5000;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;transition:opacity .3s ease">
+  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:40px;letter-spacing:-.02em;color:#f0ece4;animation:splashPulse 1.4s ease-in-out infinite">Sock<span style="color:#f0d050">Sort</span> <span style="display:inline-block;animation:splashBob 1.4s ease-in-out infinite"></span></div>
+  <div style="width:42px;height:42px;border:3px solid #222;border-top-color:#f0d050;border-radius:50%;animation:splashSpin .7s linear infinite"></div>
+</div>
+<style>
+@keyframes splashSpin{to{transform:rotate(360deg)}}
+@keyframes splashBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes splashPulse{0%,100%{opacity:.85}50%{opacity:1}}
+#loading-splash.hide{opacity:0;pointer-events:none}
+</style>
+
+<div id="app">
+  <div class="topbar">
+    <a href="index.html" style="background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;text-decoration:none;flex-shrink:0">← Appka</a>
+    <div class="logo">Sock<span>Sort</span> Shop 🛍️</div>
+    <div class="mode-pill">
+      <button class="cart-btn" id="email-settings-btn" style="display:none" onclick="openEmailSettings()" title="Email nastavenia">⚙️</button>
+      <div class="admin-toggle" id="admin-toggle" onclick="onAdminBadgeClick()">
+        <div class="admin-dot"></div><span id="admin-toggle-label">Admin</span>
+      </div>
+      <button class="cart-btn" onclick="go('cart')">
+        🛒<div class="cart-count" id="cart-count">0</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- SHOP SCREEN -->
+  <div class="screen active" id="screen-shop">
+    <div class="shop-wrap-pad">
+      <div class="shop-hero">
+        <h1>Nášivky &amp; merch 🧦</h1>
+        <p>Označ ponožky navždy. Nášivky, sady a doplnky pre celú rodinu.</p>
+      </div>
+      <div class="shop-toolbar">
+        <div class="search-row">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="search-input" placeholder="Hľadať produkty..." oninput="renderShop()">
+        </div>
+        <div class="cats" id="cats"></div>
+      </div>
+      <div class="shop-grid" id="shop-grid"></div>
+    </div>
+  </div>
+
+  <!-- CART SCREEN -->
+  <div class="screen" id="screen-cart">
+    <div class="cart-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="screen-title" style="margin-bottom:0">Košík 🛒</div>
+        <button class="btn-ghost" style="width:auto;padding:9px 16px;font-size:12.5px" onclick="go('shop')">← Späť do shopu</button>
+      </div>
+      <div id="cart-items-list"></div>
+      <div id="cart-total-wrap" style="display:none">
+        <div class="cart-total-box">
+          <div class="cart-total-row"><span>Medzisúčet</span><span id="cart-subtotal">0,00 €</span></div>
+          <div class="cart-total-row"><span>Doprava</span><span id="cart-shipping">3,50 €</span></div>
+          <div class="cart-total-row final"><span>Spolu</span><span id="cart-total-final">0,00 €</span></div>
+        </div>
+        <button class="btn-y" onclick="openCheckout()" style="margin-bottom:9px">Prejsť k objednávke →</button>
+        <button class="btn-ghost" onclick="clearCartConfirm()">Vyprázdniť košík</button>
+      </div>
+      <div class="empty-state" id="cart-empty" style="display:none">
+        <span class="ei">🛒</span>
+        <p>Košík je prázdny.<br>Pridaj si niečo zo shopu!</p>
+        <button class="btn-y" onclick="go('shop')" style="margin-top:18px;max-width:220px;margin-left:auto;margin-right:auto">Ísť nakupovať</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN ORDERS SCREEN -->
+  <div class="screen" id="screen-orders">
+    <div class="orders-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="screen-title" style="margin-bottom:0">Objednávky 📋</div>
+        <button class="btn-ghost" style="width:auto;padding:9px 16px;font-size:12.5px" onclick="go('shop')">← Späť do shopu</button>
+      </div>
+      <div id="orders-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT DETAIL MODAL -->
+<div class="modal-bg" id="product-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle">Detail produktu</div><button class="mclose" onclick="closeModal('product-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="pd-img-wrap" id="pd-img-wrap"></div>
+      <div class="pd-cat" id="pd-cat"></div>
+      <div class="pd-name" id="pd-name"></div>
+      <div class="pd-price-row"><div class="pd-price" id="pd-price"></div><div class="pd-price-old" id="pd-price-old"></div></div>
+      <div class="pd-stock" id="pd-stock"></div>
+      <div class="pd-desc" id="pd-desc"></div>
+      <div id="pd-variants"></div>
+      <label class="form-lbl">Množstvo</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="pmQty(-1)">−</button>
+        <div class="qty-num" id="pm-qty">1</div>
+        <button class="qty-btn" onclick="pmQty(1)">+</button>
+      </div>
+      <button class="btn-y" id="pd-add-btn" onclick="addToCartFromModal()">🛒 Pridať do košíka</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT PRODUCT MODAL -->
+<div class="modal-bg" id="add-product-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle" id="ap-title">Nový produkt</div><button class="mclose" onclick="closeModal('add-product-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="uarea" id="prod-uarea">
+        <input type="file" accept="image/*" onchange="onProdPhoto(this)">
+        <div id="prod-uarea-inner"><div class="uarea-icon">📷</div><div class="uarea-text">Foto produktu (nepovinné)</div></div>
+      </div>
+      <label class="form-lbl">Názov produktu</label>
+      <input class="form-inp" id="prod-name" placeholder="napr. SockSort nášivka set">
+      <label class="form-lbl">Popis</label>
+      <textarea class="form-inp" id="prod-desc" placeholder="Krátky popis produktu, materiál, použitie..."></textarea>
+      <label class="form-lbl">Kategória</label>
+      <input class="form-inp" id="prod-cat" placeholder="napr. Nášivky" list="cat-suggestions">
+      <datalist id="cat-suggestions"></datalist>
+      <div class="form-row2">
+        <div>
+          <label class="form-lbl">Cena (€)</label>
+          <input class="form-inp" id="prod-price" type="number" placeholder="9.99" step="0.01" min="0">
+        </div>
+        <div>
+          <label class="form-lbl">Pôvodná cena</label>
+          <input class="form-inp" id="prod-price-old" type="number" placeholder="nepovinné" step="0.01" min="0">
+        </div>
+      </div>
+      <label class="form-lbl">Skladom (ks)</label>
+      <input class="form-inp" id="prod-stock" type="number" placeholder="100" min="0">
+      <label class="form-lbl">Varianty (oddelené čiarkou, nepovinné)</label>
+      <input class="form-inp" id="prod-variants" placeholder="napr. S, M, L, XL">
+      <label class="form-lbl">Odznak (nepovinné)</label>
+      <input class="form-inp" id="prod-badge" placeholder="napr. Novinka, -20%">
+      <button class="btn-y" id="save-prod-btn" onclick="saveProduct()" style="margin-bottom:9px">💾 Uložiť produkt</button>
+      <button class="btn-ghost" id="delete-prod-btn" style="display:none;border-color:rgba(248,113,113,.3);color:var(--red)" onclick="deleteProductConfirm()">🗑️ Vymazať produkt</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-bg" id="checkout-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle">Doručovacie údaje</div><button class="mclose" onclick="closeModal('checkout-modal')">✕</button></div>
+    <div class="mbody">
+      <label class="form-lbl">Meno a priezvisko</label>
+      <input class="form-inp" id="ch-name" placeholder="Ján Novák">
+      <div class="form-row2">
+        <div>
+          <label class="form-lbl">Email</label>
+          <input class="form-inp" id="ch-email" type="email" placeholder="jan@email.sk">
+        </div>
+        <div>
+          <label class="form-lbl">Telefón</label>
+          <input class="form-inp" id="ch-phone" type="tel" placeholder="+421 9XX XXX XXX">
+        </div>
+      </div>
+
+      <label class="form-lbl">Spôsob doručenia</label>
+      <div id="delivery-options" style="margin-bottom:6px"></div>
+
+      <!-- Sub-choice shown only for Packeta: home address vs pickup point -->
+      <div class="delivery-mode-tabs" id="delivery-mode-tabs">
+        <button class="delivery-mode-tab active" id="dmt-address" onclick="setDeliveryMode('address')">🏠 Na adresu</button>
+        <button class="delivery-mode-tab" id="dmt-pickup" onclick="setDeliveryMode('pickup')">🏪 Výdajné miesto</button>
+      </div>
+
+      <!-- Packeta pickup point picker -->
+      <div class="packeta-picker" id="packeta-picker">
+        <button type="button" class="packeta-pick-btn" id="packeta-pick-btn" onclick="openPacketaWidget()">
+          <div class="packeta-pick-icon">🗺️</div>
+          <div class="packeta-pick-text">
+            <div class="packeta-pick-title">Vybrať výdajné miesto na mape</div>
+            <div class="packeta-pick-sub">Otvorí sa mapa všetkých Packeta miest na Slovensku</div>
+          </div>
+        </button>
+        <div class="packeta-point-card" id="packeta-point-card">
+          <div class="packeta-point-icon">📦</div>
+          <div class="packeta-point-info">
+            <div class="packeta-point-name" id="packeta-point-name"></div>
+            <div class="packeta-point-addr" id="packeta-point-addr"></div>
+            <button class="packeta-point-change" onclick="openPacketaWidget()">Zmeniť miesto</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Home address fields (street / house number / zip) -->
+      <div id="address-fields-wrap">
+        <label class="form-lbl">Ulica</label>
+        <div class="addr-field-wrap">
+          <input class="form-inp" id="ch-street" placeholder="napr. Hlavná" autocomplete="off" oninput="onAddressInput()" onfocus="onAddressInput()">
+          <div class="addr-suggestions" id="addr-suggestions"></div>
+        </div>
+        <div class="addr-confirm" id="addr-confirm">📍 <span id="addr-confirm-text"></span></div>
+
+        <div class="form-row2">
+          <div>
+            <label class="form-lbl">Číslo domu</label>
+            <input class="form-inp" id="ch-housenum" placeholder="napr. 12">
+          </div>
+          <div>
+            <label class="form-lbl">PSČ</label>
+            <input class="form-inp" id="ch-zip" placeholder="napr. 040 01" maxlength="6">
+          </div>
+        </div>
+        <div class="addr-attribution">Adresy © <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--muted)">OpenStreetMap</a> prispievatelia</div>
+      </div>
+
+      <label class="form-lbl">Spôsob platby</label>
+      <div id="payment-options" style="margin-bottom:6px"></div>
+
+      <div class="cart-total-box" style="margin-top:16px">
+        <div class="cart-total-row"><span>Tovar</span><span id="ch-subtotal">0,00 €</span></div>
+        <div class="cart-total-row"><span>Doprava</span><span id="ch-shipping">0,00 €</span></div>
+        <div class="cart-total-row final"><span>Spolu k úhrade</span><span id="ch-total">0,00 €</span></div>
+      </div>
+      <button class="btn-y" onclick="submitOrder()">✅ Odoslať objednávku</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="modal-bg" id="admin-login-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle">Admin prihlásenie 🔒</div><button class="mclose" onclick="closeModal('admin-login-modal')">✕</button></div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--muted2);margin-bottom:18px;line-height:1.6">Zadaj 4-miestny admin PIN pre prístup k správe produktov a objednávok.</p>
+      <div class="pin-row" id="pin-row">
+        <div class="pin-box" id="pin-box-0"></div>
+        <div class="pin-box" id="pin-box-1"></div>
+        <div class="pin-box" id="pin-box-2"></div>
+        <div class="pin-box" id="pin-box-3"></div>
+      </div>
+      <div class="admin-err" id="admin-err"></div>
+      <div class="numpad">
+        <button class="numpad-btn" onclick="pinPress('1')">1</button>
+        <button class="numpad-btn" onclick="pinPress('2')">2</button>
+        <button class="numpad-btn" onclick="pinPress('3')">3</button>
+        <button class="numpad-btn" onclick="pinPress('4')">4</button>
+        <button class="numpad-btn" onclick="pinPress('5')">5</button>
+        <button class="numpad-btn" onclick="pinPress('6')">6</button>
+        <button class="numpad-btn" onclick="pinPress('7')">7</button>
+        <button class="numpad-btn" onclick="pinPress('8')">8</button>
+        <button class="numpad-btn" onclick="pinPress('9')">9</button>
+        <button class="numpad-btn wide" onclick="pinClear()">Vymazať</button>
+        <button class="numpad-btn" onclick="pinPress('0')">0</button>
+        <button class="numpad-btn wide" onclick="pinBackspace()">⌫</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EMAIL SETTINGS MODAL (admin) -->
+<div class="modal-bg" id="email-settings-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle">Email notifikácie 📧</div><button class="mclose" onclick="closeModal('email-settings-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="email-status-box off" id="email-status-box">
+        <span id="email-status-icon">✗</span>
+        <span id="email-status-text">Email notifikácie nie sú nastavené</span>
+      </div>
+      <div class="setup-steps">
+        1. Zaregistruj sa zadarmo na <a href="https://www.emailjs.com" target="_blank">emailjs.com</a><br>
+        2. <b>Email Services</b> → pripoj svoj Gmail/Outlook účet<br>
+        3. <b>Email Templates</b> → vytvor šablónu, ako "To Email" nastav <b>jurko@risorius.sk</b><br>
+        4. V šablóne použi premenné: <b>{{order_id}}</b>, <b>{{customer_name}}</b>, <b>{{customer_email}}</b>, <b>{{customer_phone}}</b>, <b>{{address}}</b>, <b>{{delivery}}</b>, <b>{{payment}}</b>, <b>{{items}}</b>, <b>{{total}}</b><br>
+        5. Skopíruj <b>Service ID</b>, <b>Template ID</b> a <b>Public Key</b> nižšie
+      </div>
+      <label class="form-lbl">Service ID</label>
+      <input class="form-inp" id="ej-service" placeholder="napr. service_abc1234">
+      <label class="form-lbl">Template ID</label>
+      <input class="form-inp" id="ej-template" placeholder="napr. template_xyz789">
+      <label class="form-lbl">Public Key</label>
+      <input class="form-inp" id="ej-pubkey" placeholder="napr. AbCdEfGhIjKlMnOp">
+      <button class="btn-y" onclick="saveEmailSettings()" style="margin-bottom:9px">💾 Uložiť nastavenia</button>
+      <button class="btn-ghost" onclick="sendTestEmail()">📨 Odoslať testovací email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER SUCCESS MODAL -->
+<div class="modal-bg" id="success-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle">&nbsp;</div><button class="mclose" onclick="closeModal('success-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="success-wrap">
+        <div class="success-icon">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M5 12.5L9.5 17L19 7" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="0" style="animation:checkDraw .5s .15s ease both"/></svg>
+        </div>
+        <div class="success-title">Objednávka prijatá!</div>
+        <div class="success-sub">Ďakujeme za nákup. Potvrdenie sme poslali na tvoj email, čoskoro ťa kontaktujeme ohľadom doručenia.</div>
+        <div class="order-num-box" id="success-order-num"></div>
+        <button class="btn-y" onclick="closeModal('success-modal');go('shop')">Pokračovať v nákupe</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER DETAIL MODAL (admin) -->
+<div class="modal-bg" id="order-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle" id="om-title">Objednávka</div><button class="mclose" onclick="closeModal('order-modal')">✕</button></div>
+    <div class="mbody" id="om-body"></div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mheader"><div class="mtitle" id="confirm-title">Naozaj?</div><button class="mclose" onclick="closeModal('confirm-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="confirm-msg" id="confirm-msg"></div>
+      <button class="btn-y" style="background:var(--red);box-shadow:none;margin-bottom:9px" onclick="confirmYes()">Áno, pokračovať</button>
+      <button class="btn-ghost" onclick="closeModal('confirm-modal')">Zrušiť</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE — persisted entirely in localStorage so this works standalone
+// ══════════════════════════════════════════════
+const LS_PRODUCTS = 'shop_products';
+const LS_CART = 'shop_cart';
+const LS_ORDERS = 'shop_orders';
+const LS_ADMIN = 'shop_admin_mode';
+const LS_EMAILJS = 'shop_emailjs_cfg';
+
+const ADMIN_PIN = '2026'; // ← Zmeň na svoj vlastný PIN
+const ORDER_NOTIFY_EMAIL = 'jurko@risorius.sk';
+
+let products = [];
+let cart = [];
+let orders = [];
+let isAdminMode = false;
+let catFilter = 'Všetko';
+let currentProduct = null;
+let pmQtyVal = 1;
+let editingProductId = null;
+let prodImgData = null;
+let shopHasRendered = false;
+let lastProductsHash = '';
+let selectedVariant = '';
+let selectedPayment = 'Dobierka';
+let selectedDelivery = null;
+let deliveryMode = 'address'; // 'address' (home) or 'pickup' (Packeta pickup point)
+let selectedPacketaPoint = null;
+let confirmCb = null;
+let pinEntered = '';
+let emailjsCfg = { service:'', template:'', pubkey:'' };
+let selectedAddress = null; // {street, city, postcode} from geocoder
+let addrSearchTimer = null;
+let addrSearchSeq = 0;
+
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51ToMJgRrp3McTXxNtXmcZDwvKmJIiIvgktbR93KF6W2be2vJDmb0ytJjeTMjlZ1rbYY4XdJblrKaLlp3Tj4cLKPQ0053Ew1nIG';
+const STRIPE_API_ENDPOINT = '/api/create-checkout';
+const PACKETA_API_KEY = '2f897db7fdc1d130';
+
+// ── Check for Stripe redirect result on page load ──
+(function checkStripeReturn(){
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get('payment');
+  const orderId = params.get('order_id');
+  if(payment === 'success'){
+    window.history.replaceState({}, '', window.location.pathname);
+    if(orderId){
+      document.getElementById('success-order-num').textContent = '№ ' + orderId;
+      setTimeout(()=>openModal('success-modal'), 400);
+    }
+  } else if(payment === 'cancelled'){
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(()=>showToast('ℹ️ Platba bola zrušená — košík je stále zachovaný', 5000), 400);
+  }
+})();
+
+const DELIVERY_METHODS = [
+  {id:'packeta', icon:'📦', label:'Packeta', sub:'Domov alebo výdajné miesto, 1-2 dni', price:2.90, pickupEnabled:true, pickupPrice:1.90},
+  {id:'posta', icon:'📮', label:'Slovenská pošta', sub:'Doručenie domov, 2-4 dni', price:3.90, pickupEnabled:false},
+];
+
+const SEED_PRODUCTS = [
+  {
+    id:'p1', name:'Nášivka SockSort (sada 2ks)', description:'Tepelne odolné nášivky na označenie párov ponožiek. Vydržia pranie na 60°C, jednoducho sa žehlia priamo na látku.',
+    category:'Nášivky', price:6.90, priceOld:9.90, stock:42, variants:[], badge:'-30%', img:null, createdAt:Date.now()-300000
+  },
+  {
+    id:'p2', name:'Rodinný set nášiviek (8ks)', description:'Farebne odlíšené nášivky pre celú rodinu — každý člen má svoju farbu. Ideálne s appkou SockSort na automatické rozpoznávanie.',
+    category:'Nášivky', price:18.90, priceOld:null, stock:15, variants:[], badge:'Bestseller', img:null, createdAt:Date.now()-200000
+  },
+  {
+    id:'p3', name:'SockSort tričko', description:'100% bavlna, potlač s logom SockSort. Pohodlný strih, dostupné vo viacerých veľkostiach.',
+    category:'Merch', price:19.90, priceOld:null, stock:8, variants:['S','M','L','XL'], badge:'Novinka', img:null, createdAt:Date.now()-100000
+  },
+  {
+    id:'p4', name:'Ponožky SockSort (3 páry)', description:'Pohodlné bavlnené ponožky s vystuženou pätou a špičkou. Každý pár má jedinečný vzor pre jednoduché párovanie.',
+    category:'Ponožky', price:12.90, priceOld:null, stock:0, variants:['36-40','41-45'], badge:null, img:null, createdAt:Date.now()-50000
+  },
+];
+
+function loadState(){
+  // Cart + config stay local (per-device); products + orders come from Firebase (shared)
+  try{ cart = JSON.parse(localStorage.getItem(LS_CART) || '[]'); }catch(e){ cart = []; }
+  try{ isAdminMode = localStorage.getItem(LS_ADMIN) === '1'; }catch(e){ isAdminMode = false; }
+  try{
+    const e = localStorage.getItem(LS_EMAILJS);
+    if(e) emailjsCfg = JSON.parse(e);
+  }catch(e){}
+  initEmailJs();
+
+  if(db){
+    // Live sync products from Firebase
+    db.ref('shop/products').on('value', snap=>{
+      const data = snap.val();
+      if(data){
+        products = Object.values(data).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      } else {
+        // No products yet — seed the shop once
+        products = SEED_PRODUCTS;
+        const seedObj = {};
+        SEED_PRODUCTS.forEach(p=>{ seedObj[p.id] = p; });
+        db.ref('shop/products').set(seedObj).catch(()=>{});
+      }
+      // Only re-render if the data actually changed (prevents flicker on every event)
+      const hash = JSON.stringify(products);
+      if(hash !== lastProductsHash){
+        lastProductsHash = hash;
+        renderShop();
+      }
+    });
+    // Live sync orders from Firebase
+    db.ref('shop/orders').on('value', snap=>{
+      const data = snap.val();
+      orders = data ? Object.values(data).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)) : [];
+      if(document.getElementById('screen-orders').classList.contains('active')) renderOrders();
+      renderAdminBar();
+    });
+    // Live sync EmailJS settings from Firebase (so every device sends notifications without re-entering keys)
+    db.ref('shop/config/emailjs').on('value', snap=>{
+      const data = snap.val();
+      if(data && (data.service || data.template || data.pubkey)){
+        emailjsCfg = { service:data.service||'', template:data.template||'', pubkey:data.pubkey||'' };
+        try{ localStorage.setItem(LS_EMAILJS, JSON.stringify(emailjsCfg)); }catch(e){}
+        initEmailJs();
+        // Refresh the settings modal fields if it's open
+        const sf=document.getElementById('ej-service'); if(sf) sf.value=emailjsCfg.service;
+        const tf=document.getElementById('ej-template'); if(tf) tf.value=emailjsCfg.template;
+        const pf=document.getElementById('ej-pubkey'); if(pf) pf.value=emailjsCfg.pubkey;
+        if(document.getElementById('email-status-box')) updateEmailStatusBox();
+      }
+    });
+  } else {
+    // Firebase unavailable — fall back to localStorage so shop still works offline
+    try{
+      const p = localStorage.getItem(LS_PRODUCTS);
+      products = p ? JSON.parse(p) : SEED_PRODUCTS;
+    }catch(e){ products = SEED_PRODUCTS; }
+    try{ orders = JSON.parse(localStorage.getItem(LS_ORDERS) || '[]'); }catch(e){ orders = []; }
+  }
+}
+
+// Products: write whole collection to Firebase (keyed by id), plus local backup
+function saveProducts(){
+  try{ localStorage.setItem(LS_PRODUCTS, JSON.stringify(products)); }catch(e){}
+  if(db){
+    const obj = {};
+    products.forEach(p=>{ obj[p.id] = p; });
+    db.ref('shop/products').set(obj).catch(err=>console.warn('saveProducts failed', err));
+  }
+}
+function saveCart(){ try{ localStorage.setItem(LS_CART, JSON.stringify(cart)); }catch(e){} }
+function saveOrders(){
+  try{ localStorage.setItem(LS_ORDERS, JSON.stringify(orders)); }catch(e){}
+  // Individual orders are written directly in submitOrder/updateOrderStatus; this keeps a local backup
+}
+function saveAdminMode(){ try{ localStorage.setItem(LS_ADMIN, isAdminMode?'1':'0'); }catch(e){} }
+function saveEmailJsCfg(){
+  try{ localStorage.setItem(LS_EMAILJS, JSON.stringify(emailjsCfg)); }catch(e){}
+  // Also save to Firebase so all devices share the same email notification setup
+  if(db){
+    db.ref('shop/config/emailjs').set(emailjsCfg).catch(err=>console.warn('saveEmailJsCfg to Firebase failed', err));
+  }
+}
+
+function initEmailJs(){
+  if(window.emailjs && emailjsCfg.pubkey){
+    try{ emailjs.init({ publicKey: emailjsCfg.pubkey }); }catch(e){}
+  }
+}
+
+// ══════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════
+function go(screen){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+screen).classList.add('active');
+  if(screen==='shop') renderShop();
+  if(screen==='cart') renderCart();
+  if(screen==='orders') renderOrders();
+}
+
+// ══════════════════════════════════════════════
+// ADMIN LOGIN (PIN-based)
+// ══════════════════════════════════════════════
+function onAdminBadgeClick(){
+  if(isAdminMode){
+    doConfirm('Odhlásiť admina?', 'Stratíš prístup k správe produktov a objednávok.', adminLogout);
+  } else {
+    openAdminLogin();
+  }
+}
+
+function openAdminLogin(){
+  pinEntered = '';
+  renderPinBoxes();
+  document.getElementById('admin-err').textContent = '';
+  openModal('admin-login-modal');
+}
+
+function renderPinBoxes(){
+  for(let i=0;i<4;i++){
+    const box = document.getElementById('pin-box-'+i);
+    const filled = i < pinEntered.length;
+    box.classList.toggle('filled', filled);
+    box.textContent = filled ? '●' : '';
+  }
+}
+
+function pinPress(digit){
+  if(pinEntered.length >= 4) return;
+  pinEntered += digit;
+  renderPinBoxes();
+  document.getElementById('admin-err').textContent = '';
+  if(pinEntered.length === 4){
+    setTimeout(checkAdminPin, 180);
+  }
+}
+function pinBackspace(){ pinEntered = pinEntered.slice(0,-1); renderPinBoxes(); }
+function pinClear(){ pinEntered = ''; renderPinBoxes(); document.getElementById('admin-err').textContent=''; }
+
+function checkAdminPin(){
+  if(pinEntered === ADMIN_PIN){
+    isAdminMode = true;
+    saveAdminMode();
+    syncAdminUI();
+    closeModal('admin-login-modal');
+    renderShop();
+    showToast('⚡ Prihlásený ako admin');
+  } else {
+    document.getElementById('admin-err').textContent = '❌ Nesprávny PIN, skús znova';
+    pinEntered = '';
+    renderPinBoxes();
+  }
+}
+
+function adminLogout(){
+  isAdminMode = false;
+  saveAdminMode();
+  syncAdminUI();
+  go('shop');
+  showToast('👤 Admin odhlásený');
+}
+
+function syncAdminUI(){
+  const t = document.getElementById('admin-toggle');
+  const lbl = document.getElementById('admin-toggle-label');
+  const emailBtn = document.getElementById('email-settings-btn');
+  t.classList.toggle('on', isAdminMode);
+  lbl.textContent = isAdminMode ? 'Admin: ON' : 'Admin';
+  if(emailBtn) emailBtn.style.display = isAdminMode ? 'flex' : 'none';
+}
+
+
+// ══════════════════════════════════════════════
+// SHOP RENDER
+// ══════════════════════════════════════════════
+function renderCats(){
+  const cats = ['Všetko', ...new Set(products.map(p=>p.category).filter(Boolean))];
+  // build datalist for admin form too
+  const dl = document.getElementById('cat-suggestions');
+  dl.innerHTML = cats.filter(c=>c!=='Všetko').map(c=>`<option value="${escapeHtml(c)}">`).join('');
+
+  const wrap = document.getElementById('cats');
+  wrap.innerHTML = '';
+  cats.forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.className = 'cat-chip' + (cat===catFilter ? ' active' : '');
+    btn.textContent = cat;
+    btn.onclick = ()=>{ catFilter = cat; renderShop(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderShop(){
+  renderCats();
+  const grid = document.getElementById('shop-grid');
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+
+  let filtered = products.filter(p=>{
+    const matchesCat = catFilter==='Všetko' || p.category===catFilter;
+    const matchesQ = !q || p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q);
+    return matchesCat && matchesQ;
+  });
+  filtered.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+
+  grid.innerHTML = '';
+
+  if(!filtered.length && !isAdminMode){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = `<span class="ei">🔍</span><p>${products.length ? 'Žiadne produkty nevyhovujú filtru.' : 'Zatiaľ tu nič nie je.'}</p>`;
+    grid.appendChild(empty);
+  } else {
+    filtered.forEach((prod, i)=>{
+      const card = document.createElement('div');
+      card.className = 'prod-card';
+      // Animate only the very first render — re-syncs from Firebase shouldn't re-trigger the fade
+      if(!shopHasRendered){ card.style.animationDelay = (i*0.05)+'s'; }
+      else { card.style.animation = 'none'; }
+      const stockBadge = prod.stock===0 ? '<div class="prod-stock-badge">Vypredané</div>' : '';
+      card.innerHTML =
+        `<div class="prod-img">${prod.img ? `<img src="${prod.img}" loading="lazy">` : `<div class="prod-ph">🧦</div>`}</div>`+
+        (prod.badge ? `<div class="prod-badge">${escapeHtml(prod.badge)}</div>` : '') +
+        stockBadge +
+        `<div class="prod-footer">`+
+          `<div class="prod-cat">${escapeHtml(prod.category||'')}</div>`+
+          `<div class="prod-name">${escapeHtml(prod.name)}</div>`+
+          `<div class="prod-price-row"><div class="prod-price">${fmtPrice(prod.price)}</div>`+
+          (prod.priceOld ? `<div class="prod-price-old">${fmtPrice(prod.priceOld)}</div>` : '') +
+          `</div>`+
+        `</div>`;
+      card.onclick = ()=> isAdminMode ? openEditProduct(prod) : openProduct(prod);
+      grid.appendChild(card);
+    });
+  }
+  shopHasRendered = true;
+
+  if(isAdminMode){
+    const addCard = document.createElement('div');
+    addCard.className = 'add-prod-card';
+    addCard.innerHTML = `<div class="inner"><div class="ic">➕</div><div class="lbl">Pridať produkt</div></div>`;
+    addCard.onclick = openAddProduct;
+    grid.appendChild(addCard);
+
+    // Admin shortcut to orders, shown as a wide tile under grid via separate row
+  }
+  renderAdminBar();
+}
+
+function renderAdminBar(){
+  // Insert a quick "Objednávky" access row right after hero when admin mode is on
+  let bar = document.getElementById('admin-orders-bar');
+  const toolbar = document.querySelector('.shop-toolbar');
+  if(isAdminMode){
+    if(!bar){
+      bar = document.createElement('button');
+      bar.id = 'admin-orders-bar';
+      bar.className = 'btn-ghost';
+      bar.style.cssText = 'margin:0 0 14px;border-color:rgba(240,208,80,.3);color:var(--ac)';
+      bar.onclick = ()=>go('orders');
+      toolbar.parentNode.insertBefore(bar, toolbar);
+    }
+    const newCount = orders.filter(o=>o.status==='new').length;
+    bar.textContent = '📋 Spravovať objednávky' + (newCount ? ` · ${newCount} nových` : '');
+  } else if(bar){
+    bar.remove();
+  }
+}
+
+function fmtPrice(n){ return (Number(n)||0).toFixed(2).replace('.', ',') + ' €'; }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// ══════════════════════════════════════════════
+// PRODUCT DETAIL (customer view)
+// ══════════════════════════════════════════════
+function openProduct(prod){
+  if(prod.stock===0){ showToast('❌ Tento produkt je vypredaný'); return; }
+  currentProduct = prod;
+  pmQtyVal = 1;
+  selectedVariant = prod.variants && prod.variants.length ? prod.variants[0] : '';
+
+  document.getElementById('pd-cat').textContent = prod.category || '';
+  document.getElementById('pd-name').textContent = prod.name;
+  document.getElementById('pd-price').textContent = fmtPrice(prod.price);
+  document.getElementById('pd-price-old').textContent = prod.priceOld ? fmtPrice(prod.priceOld) : '';
+  document.getElementById('pd-desc').textContent = prod.description || '';
+  document.getElementById('pm-qty').textContent = '1';
+
+  const imgWrap = document.getElementById('pd-img-wrap');
+  imgWrap.innerHTML = prod.img ? `<img src="${prod.img}">` : `<div class="ph">🧦</div>`;
+
+  const stockEl = document.getElementById('pd-stock');
+  if(prod.stock > 10){ stockEl.className='pd-stock ok'; stockEl.textContent='✓ Skladom'; }
+  else if(prod.stock > 0){ stockEl.className='pd-stock low'; stockEl.textContent=`⚠️ Posledné kusy (${prod.stock} ks)`; }
+  else { stockEl.className='pd-stock out'; stockEl.textContent='✕ Vypredané'; }
+
+  const varWrap = document.getElementById('pd-variants');
+  varWrap.innerHTML = '';
+  if(prod.variants && prod.variants.length){
+    const lbl = document.createElement('label');
+    lbl.className = 'form-lbl'; lbl.textContent = 'Vyber variant';
+    varWrap.appendChild(lbl);
+    const chips = document.createElement('div');
+    chips.className = 'owner-chips';
+    prod.variants.forEach((v,i)=>{
+      const c = document.createElement('div');
+      c.className = 'ochip' + (i===0 ? ' on' : '');
+      c.textContent = v;
+      c.onclick = ()=>{ chips.querySelectorAll('.ochip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); selectedVariant = v; };
+      chips.appendChild(c);
+    });
+    varWrap.appendChild(chips);
+  }
+
+  document.getElementById('pd-add-btn').disabled = prod.stock===0;
+  openModal('product-modal');
+}
+
+function pmQty(d){
+  pmQtyVal = Math.max(1, Math.min(currentProduct ? currentProduct.stock : 99, pmQtyVal + d));
+  document.getElementById('pm-qty').textContent = pmQtyVal;
+}
+
+function addToCartFromModal(){
+  if(!currentProduct) return;
+  const key = currentProduct.id + '|' + selectedVariant;
+  const existing = cart.find(i=>i.key===key);
+  if(existing){
+    existing.qty = Math.min(currentProduct.stock, existing.qty + pmQtyVal);
+  } else {
+    cart.push({
+      key, id: currentProduct.id, name: currentProduct.name, price: currentProduct.price,
+      img: currentProduct.img, variant: selectedVariant, qty: pmQtyVal
+    });
+  }
+  saveCart();
+  updateCartBadge();
+  closeModal('product-modal');
+  showToast('🛒 Pridané do košíka!');
+}
+
+function updateCartBadge(){
+  const total = cart.reduce((s,i)=>s+i.qty,0);
+  const badge = document.getElementById('cart-count');
+  badge.textContent = total;
+  badge.classList.toggle('show', total>0);
+}
+
+// ══════════════════════════════════════════════
+// CART
+// ══════════════════════════════════════════════
+function renderCart(){
+  const list = document.getElementById('cart-items-list');
+  const empty = document.getElementById('cart-empty');
+  const totalWrap = document.getElementById('cart-total-wrap');
+
+  if(!cart.length){
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    totalWrap.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  totalWrap.style.display = 'block';
+
+  list.innerHTML = '';
+  let subtotal = 0;
+  cart.forEach((item, i)=>{
+    subtotal += item.price * item.qty;
+    const d = document.createElement('div');
+    d.className = 'cart-item';
+    d.style.animationDelay = (i*0.05)+'s';
+    d.innerHTML =
+      `<div class="cart-item-img">${item.img ? `<img src="${item.img}">` : '📦'}</div>`+
+      `<div class="cart-item-info">`+
+        `<div class="cart-item-name">${escapeHtml(item.name)}</div>`+
+        (item.variant ? `<div class="cart-item-variant">Variant: ${escapeHtml(item.variant)}</div>` : '')+
+        `<div class="cart-item-price">${fmtPrice(item.price * item.qty)}</div>`+
+      `</div>`+
+      `<div class="cart-qty">`+
+        `<button class="qty-btn" onclick="cartQty(${i},-1)">−</button>`+
+        `<div class="qty-num">${item.qty}</div>`+
+        `<button class="qty-btn" onclick="cartQty(${i},1)">+</button>`+
+      `</div>`+
+      `<button class="cart-remove" onclick="removeCartItem(${i})" title="Odstrániť">✕</button>`;
+    list.appendChild(d);
+  });
+
+  const shipping = subtotal > 0 ? 3.50 : 0;
+  document.getElementById('cart-subtotal').textContent = fmtPrice(subtotal);
+  document.getElementById('cart-shipping').textContent = fmtPrice(shipping);
+  document.getElementById('cart-total-final').textContent = fmtPrice(subtotal + shipping);
+}
+
+function cartQty(i, delta){
+  const item = cart[i];
+  const prod = products.find(p=>p.id===item.id);
+  const maxStock = prod ? prod.stock : 99;
+  item.qty = Math.max(1, Math.min(maxStock, item.qty + delta));
+  saveCart();
+  updateCartBadge();
+  renderCart();
+}
+
+function removeCartItem(i){
+  cart.splice(i,1);
+  saveCart();
+  updateCartBadge();
+  renderCart();
+}
+
+function clearCartConfirm(){
+  doConfirm('Vyprázdniť košík?', 'Všetky položky budú odstránené z košíka.', ()=>{
+    cart = [];
+    saveCart();
+    updateCartBadge();
+    renderCart();
+    showToast('🗑️ Košík vyprázdnený');
+  });
+}
+
+// ══════════════════════════════════════════════
+// CHECKOUT
+// ══════════════════════════════════════════════
+const PAYMENT_METHODS = [
+  {id:'card', icon:'💳', label:'Kartou online'},
+  {id:'transfer', icon:'🏦', label:'Bankový prevod'},
+  {id:'cod', icon:'📦', label:'Dobierka'},
+];
+
+function openCheckout(){
+  if(!cart.length) return;
+
+  // Reset address & pickup state
+  selectedAddress = null;
+  selectedPacketaPoint = null;
+  deliveryMode = 'address';
+  document.getElementById('ch-street').value = '';
+  document.getElementById('ch-housenum').value = '';
+  document.getElementById('ch-zip').value = '';
+  document.getElementById('addr-confirm').classList.remove('show');
+  document.getElementById('addr-suggestions').classList.remove('show');
+  document.getElementById('packeta-point-card').classList.remove('show');
+  document.getElementById('packeta-pick-btn').style.display = 'flex';
+
+  // Payment options
+  const payWrap = document.getElementById('payment-options');
+  payWrap.innerHTML = '';
+  selectedPayment = PAYMENT_METHODS[2].label;
+  PAYMENT_METHODS.forEach((m,i)=>{
+    const opt = document.createElement('div');
+    opt.className = 'pay-option' + (i===2 ? ' on' : '');
+    opt.innerHTML = `<div class="pay-icon">${m.icon}</div><div class="pay-label">${m.label}</div><div class="pay-check"></div>`;
+    opt.onclick = ()=>{
+      payWrap.querySelectorAll('.pay-option').forEach(x=>x.classList.remove('on'));
+      opt.classList.add('on');
+      selectedPayment = m.label;
+    };
+    payWrap.appendChild(opt);
+  });
+
+  // Delivery options
+  const delWrap = document.getElementById('delivery-options');
+  delWrap.innerHTML = '';
+  selectedDelivery = DELIVERY_METHODS[0];
+  DELIVERY_METHODS.forEach((m,i)=>{
+    const opt = document.createElement('div');
+    opt.className = 'delivery-option' + (i===0 ? ' on' : '');
+    opt.innerHTML =
+      `<div class="delivery-icon-box">${m.icon}</div>`+
+      `<div class="delivery-info"><div class="delivery-label">${m.label}</div><div class="delivery-sub">${m.sub}</div></div>`+
+      `<div class="delivery-price">${fmtPrice(m.price)}</div>`;
+    opt.onclick = ()=>{
+      delWrap.querySelectorAll('.delivery-option').forEach(x=>x.classList.remove('on'));
+      opt.classList.add('on');
+      selectedDelivery = m;
+      deliveryMode = 'address';
+      selectedPacketaPoint = null;
+      syncDeliveryModeUI();
+      updateCheckoutTotals();
+    };
+    delWrap.appendChild(opt);
+  });
+
+  syncDeliveryModeUI();
+  updateCheckoutTotals();
+  openModal('checkout-modal');
+}
+
+// Shows/hides the "Na adresu / Výdajné miesto" sub-tabs depending on whether
+// the currently selected delivery method supports pickup points (Packeta does, Pošta doesn't).
+function syncDeliveryModeUI(){
+  const tabs = document.getElementById('delivery-mode-tabs');
+  const supportsPickup = selectedDelivery && selectedDelivery.pickupEnabled;
+  tabs.classList.toggle('show', !!supportsPickup);
+  if(!supportsPickup) deliveryMode = 'address';
+  setDeliveryMode(deliveryMode, true);
+}
+
+function setDeliveryMode(mode, skipToast){
+  deliveryMode = mode;
+  document.getElementById('dmt-address').classList.toggle('active', mode==='address');
+  document.getElementById('dmt-pickup').classList.toggle('active', mode==='pickup');
+  document.getElementById('address-fields-wrap').style.display = mode==='address' ? 'block' : 'none';
+  document.getElementById('packeta-picker').classList.toggle('show', mode==='pickup');
+  updateCheckoutTotals();
+}
+
+function updateCheckoutTotals(){
+  const subtotal = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  let shipping = 0;
+  if(selectedDelivery){
+    shipping = (deliveryMode==='pickup' && selectedDelivery.pickupEnabled && selectedDelivery.pickupPrice != null)
+      ? selectedDelivery.pickupPrice
+      : selectedDelivery.price;
+  }
+  document.getElementById('ch-subtotal').textContent = fmtPrice(subtotal);
+  document.getElementById('ch-shipping').textContent = fmtPrice(shipping);
+  document.getElementById('ch-total').textContent = fmtPrice(subtotal + shipping);
+}
+
+// ══════════════════════════════════════════════
+// ADDRESS AUTOCOMPLETE (OpenStreetMap Nominatim)
+// ══════════════════════════════════════════════
+function onAddressInput(){
+  const q = document.getElementById('ch-street').value.trim();
+  const box = document.getElementById('addr-suggestions');
+
+  // Typing invalidates a previously confirmed selection
+  if(selectedAddress && selectedAddress.street !== q){
+    selectedAddress = null;
+    document.getElementById('addr-confirm').classList.remove('show');
+  }
+
+  clearTimeout(addrSearchTimer);
+  if(q.length < 3){
+    box.classList.remove('show');
+    box.innerHTML = '';
+    return;
+  }
+
+  box.innerHTML = `<div class="addr-sugg-loading"><div class="addr-spinner"></div>Hľadám adresy...</div>`;
+  box.classList.add('show');
+
+  const seq = ++addrSearchSeq;
+  addrSearchTimer = setTimeout(()=>fetchAddressSuggestions(q, seq), 420);
+}
+
+async function fetchAddressSuggestions(query, seq){
+  const box = document.getElementById('addr-suggestions');
+  try{
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=sk&limit=6&q=' + encodeURIComponent(query + ', Slovensko');
+    const res = await fetch(url, { headers: { 'Accept-Language': 'sk' } });
+    if(seq !== addrSearchSeq) return; // a newer search superseded this one
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    // Keep only results that actually look like streets/places (dedupe by label)
+    const seen = new Set();
+    const items = [];
+    data.forEach(r=>{
+      const a = r.address || {};
+      const street = a.road || a.pedestrian || a.footway || a.street || r.name || query;
+      const city = a.city || a.town || a.village || a.municipality || '';
+      const postcode = a.postcode || '';
+      const label = street + (city ? ', ' + city : '');
+      if(seen.has(label)) return;
+      seen.add(label);
+      items.push({ street, city, postcode, label });
+    });
+
+    if(!items.length){
+      box.innerHTML = `<div class="addr-sugg-loading">Žiadne výsledky — skús iný názov ulice</div>`;
+      return;
+    }
+
+    box.innerHTML = '';
+    items.forEach(item=>{
+      const el = document.createElement('div');
+      el.className = 'addr-sugg-item';
+      el.innerHTML =
+        `<div class="addr-sugg-main">${escapeHtml(item.street)}</div>`+
+        `<div class="addr-sugg-sub">${escapeHtml(item.city)}${item.postcode ? ' · ' + escapeHtml(item.postcode) : ''}</div>`;
+      el.onclick = ()=>selectAddressSuggestion(item);
+      box.appendChild(el);
+    });
+  }catch(e){
+    if(seq !== addrSearchSeq) return;
+    box.innerHTML = `<div class="addr-sugg-loading">⚠️ Vyhľadávanie adries je momentálne nedostupné — zadaj adresu ručne</div>`;
+  }
+}
+
+function selectAddressSuggestion(item){
+  selectedAddress = item;
+  document.getElementById('ch-street').value = item.street;
+  if(item.postcode) document.getElementById('ch-zip').value = item.postcode;
+  document.getElementById('addr-suggestions').classList.remove('show');
+
+  const confirmEl = document.getElementById('addr-confirm');
+  const confirmText = document.getElementById('addr-confirm-text');
+  confirmText.textContent = `${item.street}${item.city ? ', ' + item.city : ''}${item.postcode ? ' ' + item.postcode : ''}`;
+  confirmEl.classList.add('show');
+
+  document.getElementById('ch-housenum').focus();
+}
+
+// Hide suggestions when clicking elsewhere
+document.addEventListener('click', e=>{
+  const wrap = document.querySelector('.addr-field-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('addr-suggestions').classList.remove('show');
+  }
+});
+
+// ══════════════════════════════════════════════
+// PACKETA WIDGET — pickup point map
+// ══════════════════════════════════════════════
+function openPacketaWidget(){
+  if(PACKETA_API_KEY === 'YOUR_PACKETA_API_KEY' || !PACKETA_API_KEY){
+    showToast('⚠️ Packeta API kľúč nie je nastavený — pozri návod');
+    if(isAdminMode){
+      showToast('ℹ️ Admin: nastav PACKETA_API_KEY v kóde (riadok s konštantou)', 5000);
+    }
+    return;
+  }
+  if(!window.Packeta || !window.Packeta.Widget){
+    showToast('⚠️ Packeta mapa sa nenačítala — skontroluj pripojenie a skús znova');
+    return;
+  }
+
+  const options = {
+    country: 'sk',
+    language: 'sk',
+    valueFormat: '"Packeta",id,carrierId,carrierPickupPointId,name,city,street',
+    view: 'modal',
+  };
+
+  Packeta.Widget.pick(PACKETA_API_KEY, point=>{
+    if(!point) return; // widget closed without a selection
+    selectedPacketaPoint = point;
+    showSelectedPacketaPoint(point);
+    updateCheckoutTotals();
+  }, options);
+}
+
+function showSelectedPacketaPoint(point){
+  const card = document.getElementById('packeta-point-card');
+  const btn = document.getElementById('packeta-pick-btn');
+  const nameEl = document.getElementById('packeta-point-name');
+  const addrEl = document.getElementById('packeta-point-addr');
+
+  const name = point.name || point.place || 'Vybrané výdajné miesto';
+  const addrParts = [point.street, point.city, point.zip].filter(Boolean);
+  nameEl.textContent = name;
+  addrEl.textContent = addrParts.join(', ') || 'Adresa nie je k dispozícii';
+
+  card.classList.add('show');
+  btn.style.display = 'none';
+}
+
+function formatPacketaPointForOrder(point){
+  if(!point) return '';
+  // Packeta's widget usually returns a "name" that's already a full descriptive label
+  // (e.g. "Žabka Bratislava, Hlavná 1"), so avoid repeating street/city if already present in it.
+  let result = point.name || [point.street, point.city].filter(Boolean).join(', ') || 'Vybrané výdajné miesto';
+  if(point.zip && !result.includes(point.zip)) result += ' (' + point.zip + ')';
+  return result;
+}
+
+// ══════════════════════════════════════════════
+// EMAIL NOTIFICATIONS (EmailJS)
+// ══════════════════════════════════════════════
+function openEmailSettings(){
+  document.getElementById('ej-service').value = emailjsCfg.service || '';
+  document.getElementById('ej-template').value = emailjsCfg.template || '';
+  document.getElementById('ej-pubkey').value = emailjsCfg.pubkey || '';
+  updateEmailStatusBox();
+  openModal('email-settings-modal');
+}
+
+function updateEmailStatusBox(){
+  const box = document.getElementById('email-status-box');
+  const icon = document.getElementById('email-status-icon');
+  const text = document.getElementById('email-status-text');
+  const configured = emailjsCfg.service && emailjsCfg.template && emailjsCfg.pubkey;
+  box.className = 'email-status-box ' + (configured ? 'ok' : 'off');
+  icon.textContent = configured ? '✓' : '✗';
+  text.textContent = configured
+    ? `Notifikácie sa posielajú na ${ORDER_NOTIFY_EMAIL}`
+    : 'Email notifikácie nie sú nastavené';
+}
+
+function saveEmailSettings(){
+  emailjsCfg = {
+    service: document.getElementById('ej-service').value.trim(),
+    template: document.getElementById('ej-template').value.trim(),
+    pubkey: document.getElementById('ej-pubkey').value.trim(),
+  };
+  saveEmailJsCfg();
+  initEmailJs();
+  updateEmailStatusBox();
+  showToast('💾 Email nastavenia uložené');
+}
+
+function buildOrderEmailParams(order){
+  const itemsText = order.items.map(i=>`${i.name}${i.variant ? ' ('+i.variant+')' : ''} ×${i.qty} — ${fmtPrice(i.price*i.qty)}`).join('\n');
+  const addressText = order.pickupPoint
+    ? '🏪 Výdajné miesto: ' + order.pickupPoint
+    : `${order.customer.street} ${order.customer.housenum}, ${order.customer.zip}`;
+  return {
+    to_email: ORDER_NOTIFY_EMAIL,
+    order_id: order.id,
+    customer_name: order.customer.name,
+    customer_email: order.customer.email,
+    customer_phone: order.customer.phone || '—',
+    address: addressText,
+    delivery: order.delivery,
+    payment: order.payment,
+    items: itemsText,
+    subtotal: fmtPrice(order.subtotal),
+    shipping: fmtPrice(order.shipping),
+    total: fmtPrice(order.total),
+  };
+}
+
+async function sendOrderEmail(order){
+  if(!window.emailjs || !emailjsCfg.service || !emailjsCfg.template || !emailjsCfg.pubkey){
+    console.warn('EmailJS not configured — skipping email send.');
+    return { sent:false, reason:'not_configured' };
+  }
+  try{
+    await emailjs.send(emailjsCfg.service, emailjsCfg.template, buildOrderEmailParams(order));
+    return { sent:true };
+  }catch(e){
+    console.warn('EmailJS send failed:', e);
+    return { sent:false, reason:e.message || 'send_failed' };
+  }
+}
+
+function sendTestEmail(){
+  const service = document.getElementById('ej-service').value.trim();
+  const template = document.getElementById('ej-template').value.trim();
+  const pubkey = document.getElementById('ej-pubkey').value.trim();
+  if(!service || !template || !pubkey){ showToast('⚠️ Vyplň všetky 3 polia'); return; }
+  if(!window.emailjs){ showToast('⚠️ EmailJS sa nenačítal — skontroluj pripojenie'); return; }
+
+  try{ emailjs.init({ publicKey: pubkey }); }catch(e){}
+  const testOrder = {
+    id: 'TEST-' + Date.now().toString(36).toUpperCase(),
+    customer: { name:'Testovací zákazník', email:'test@example.com', phone:'+421 900 000 000', street:'Hlavná', housenum:'1', zip:'811 01' },
+    items: [{ name:'Testovací produkt', variant:'', price:9.99, qty:1 }],
+    delivery: 'Packeta', payment: 'Dobierka',
+    subtotal: 9.99, shipping: 2.90, total: 12.89
+  };
+  showToast('📨 Odosielam test...');
+  emailjs.send(service, template, buildOrderEmailParams(testOrder))
+    .then(()=>showToast('✅ Testovací email odoslaný!'))
+    .catch(err=>showToast('❌ Chyba: ' + (err.text || err.message || 'send failed')));
+}
+
+// ══════════════════════════════════════════════
+// SUBMIT ORDER
+// ══════════════════════════════════════════════
+async function submitOrder(){
+  const name = document.getElementById('ch-name').value.trim();
+  const email = document.getElementById('ch-email').value.trim();
+  const phone = document.getElementById('ch-phone').value.trim();
+
+  if(!name || !email){ showToast('⚠️ Vyplň meno a email'); return; }
+  if(!/^\S+@\S+\.\S+$/.test(email)){ showToast('⚠️ Zadaj platný email'); return; }
+  if(!selectedDelivery){ showToast('⚠️ Vyber spôsob doručenia'); return; }
+
+  const usingPickup = deliveryMode === 'pickup' && selectedDelivery.pickupEnabled;
+
+  let street = '', housenum = '', zip = '', city = '';
+  if(usingPickup){
+    if(!selectedPacketaPoint){ showToast('⚠️ Vyber výdajné miesto na mape'); return; }
+  } else {
+    street = document.getElementById('ch-street').value.trim();
+    housenum = document.getElementById('ch-housenum').value.trim();
+    zip = document.getElementById('ch-zip').value.trim();
+    city = selectedAddress ? selectedAddress.city : '';
+    if(!street || !housenum || !zip){ showToast('⚠️ Vyplň ulicu, číslo domu a PSČ'); return; }
+    if(!/^\d{3}\s?\d{2}$/.test(zip)){ showToast('⚠️ PSČ musí mať formát napr. 811 01'); return; }
+  }
+
+  const subtotal = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const shipping = usingPickup && selectedDelivery.pickupPrice != null ? selectedDelivery.pickupPrice : selectedDelivery.price;
+  const orderId = 'OBJ-' + Date.now().toString(36).toUpperCase();
+  const order = {
+    id: orderId,
+    customer: { name, email, phone, street, housenum, zip, city },
+    items: cart.map(i=>({ name:i.name, variant:i.variant, price:i.price, qty:i.qty })),
+    payment: selectedPayment,
+    delivery: selectedDelivery.label + (usingPickup ? ' (výdajné miesto)' : ' (na adresu)'),
+    pickupPoint: usingPickup ? formatPacketaPointForOrder(selectedPacketaPoint) : null,
+    subtotal: +subtotal.toFixed(2),
+    shipping,
+    total: +(subtotal+shipping).toFixed(2),
+    status: selectedPayment === 'Kartou online' ? 'pending_payment' : 'new',
+    createdAt: Date.now()
+  };
+
+  // ── STRIPE card payment ──
+  if(selectedPayment === 'Kartou online'){
+    const submitBtn = document.querySelector('#checkout-modal .btn-y');
+    if(submitBtn){ submitBtn.disabled=true; submitBtn.textContent='⏳ Pripravujem platbu...'; }
+
+    try{
+      const res = await fetch(STRIPE_API_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: order.items,
+          customer: order.customer,
+          delivery: order.delivery,
+          shipping: order.shipping,
+          orderId: order.id
+        })
+      });
+
+      if(!res.ok){
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Chyba servera: ' + res.status);
+      }
+
+      const { url } = await res.json();
+
+      // Save order as pending BEFORE redirect (so it exists when user returns)
+      decreaseStock();
+      saveOrderToFirebase(order);
+
+      closeModal('checkout-modal');
+      window.location.href = url;
+
+    }catch(err){
+      if(submitBtn){ submitBtn.disabled=false; submitBtn.textContent='✅ Odoslať objednávku'; }
+      showToast('❌ ' + err.message, 6000);
+      console.error('Stripe error:', err);
+    }
+    return;
+  }
+
+  // ── Non-card payments (Prevod, Dobierka) ──
+  decreaseStock();
+  saveOrderToFirebase(order);
+
+  cart = [];
+  saveCart();
+  updateCartBadge();
+
+  closeModal('checkout-modal');
+  document.getElementById('success-order-num').textContent = '№ ' + order.id;
+  openModal('success-modal');
+
+  sendOrderEmail(order).then(result=>{
+    if(result.sent) showToast('📧 Notifikácia odoslaná na ' + ORDER_NOTIFY_EMAIL);
+    else if(result.reason === 'not_configured' && isAdminMode) showToast('ℹ️ Email nenastavený — nastav v ⚙️');
+  });
+
+  ['ch-name','ch-email','ch-phone','ch-street','ch-housenum','ch-zip'].forEach(id=>document.getElementById(id).value='');
+  selectedAddress = null;
+  document.getElementById('addr-confirm').classList.remove('show');
+}
+
+// Write order to Firebase (shared) — falls back to local array offline
+function saveOrderToFirebase(order){
+  if(db){
+    db.ref('shop/orders/'+order.id).set(order).catch(err=>console.warn('saveOrder failed', err));
+  } else {
+    orders.unshift(order);
+    saveOrders();
+  }
+}
+
+function decreaseStock(){
+  cart.forEach(item=>{
+    const prod = products.find(p=>p.id===item.id);
+    if(prod){
+      prod.stock = Math.max(0, prod.stock - item.qty);
+      if(db) db.ref('shop/products/'+prod.id+'/stock').set(prod.stock).catch(()=>{});
+    }
+  });
+  if(!db) saveProducts();
+}
+
+// ══════════════════════════════════════════════
+// ADMIN — PRODUCTS
+// ══════════════════════════════════════════════
+function onProdPhoto(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    resizeImage(e.target.result, 700, 0.78).then(async resized=>{
+      const ua = document.getElementById('prod-uarea');
+      let img = ua.querySelector('img.prev');
+      if(!img){ img = document.createElement('img'); img.className='prev'; img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover'; ua.appendChild(img); }
+      img.src = resized;
+      document.getElementById('prod-uarea-inner').style.display = 'none';
+      // Upload to Cloudinary so image is shared across devices; fall back to base64
+      prodImgData = resized;
+      try{
+        showToast('📤 Nahrávam fotku...');
+        prodImgData = await uploadToCloudinary(resized);
+        showToast('✅ Fotka nahratá');
+      }catch(err){
+        console.warn('Cloudinary failed, keeping base64:', err);
+      }
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeImage(base64, maxWidth, quality){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const scale = Math.min(1, maxWidth/img.width);
+      const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+      const canvas = document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', quality||0.78));
+    };
+    img.src = base64;
+  });
+}
+
+function openAddProduct(){
+  editingProductId = null;
+  prodImgData = null;
+  document.getElementById('ap-title').textContent = 'Nový produkt';
+  document.getElementById('delete-prod-btn').style.display = 'none';
+  ['prod-name','prod-desc','prod-cat','prod-price','prod-price-old','prod-stock','prod-variants','prod-badge'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('prod-uarea-inner').style.display = 'flex';
+  const ua = document.getElementById('prod-uarea');
+  const prev = ua.querySelector('img.prev'); if(prev) prev.remove();
+  renderCats();
+  openModal('add-product-modal');
+}
+
+function openEditProduct(prod){
+  editingProductId = prod.id;
+  prodImgData = prod.img;
+  document.getElementById('ap-title').textContent = 'Upraviť produkt';
+  document.getElementById('delete-prod-btn').style.display = 'block';
+  document.getElementById('prod-name').value = prod.name;
+  document.getElementById('prod-desc').value = prod.description || '';
+  document.getElementById('prod-cat').value = prod.category || '';
+  document.getElementById('prod-price').value = prod.price;
+  document.getElementById('prod-price-old').value = prod.priceOld || '';
+  document.getElementById('prod-stock').value = prod.stock;
+  document.getElementById('prod-variants').value = (prod.variants||[]).join(', ');
+  document.getElementById('prod-badge').value = prod.badge || '';
+
+  const ua = document.getElementById('prod-uarea');
+  const prev = ua.querySelector('img.prev'); if(prev) prev.remove();
+  if(prod.img){
+    const img = document.createElement('img');
+    img.className='prev'; img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+    img.src = prod.img;
+    ua.appendChild(img);
+    document.getElementById('prod-uarea-inner').style.display = 'none';
+  } else {
+    document.getElementById('prod-uarea-inner').style.display = 'flex';
+  }
+  renderCats();
+  openModal('add-product-modal');
+}
+
+function saveProduct(){
+  const name = document.getElementById('prod-name').value.trim();
+  const price = parseFloat(document.getElementById('prod-price').value);
+  if(!name){ showToast('⚠️ Zadaj názov produktu'); return; }
+  if(!price || price <= 0){ showToast('⚠️ Zadaj platnú cenu'); return; }
+
+  const priceOld = parseFloat(document.getElementById('prod-price-old').value) || null;
+  const stock = parseInt(document.getElementById('prod-stock').value) || 0;
+  const variantsStr = document.getElementById('prod-variants').value.trim();
+  const variants = variantsStr ? variantsStr.split(',').map(v=>v.trim()).filter(Boolean) : [];
+  const category = document.getElementById('prod-cat').value.trim() || 'Ostatné';
+  const description = document.getElementById('prod-desc').value.trim();
+  const badge = document.getElementById('prod-badge').value.trim() || null;
+
+  const id = editingProductId || ('p_' + Date.now().toString(36));
+  const existing = editingProductId ? products.find(p=>p.id===editingProductId) : null;
+  const prod = {
+    id, name, description, category, price,
+    priceOld: priceOld||null, stock, variants,
+    badge: badge||null,
+    img: prodImgData||null,
+    createdAt: existing ? (existing.createdAt||Date.now()) : Date.now()
+  };
+
+  if(db){
+    // Write directly to Firebase — the live listener updates all devices
+    db.ref('shop/products/'+id).set(prod)
+      .then(()=>showToast(editingProductId ? '✅ Produkt upravený!' : '✅ Produkt pridaný!'))
+      .catch(err=>showToast('❌ '+err.message));
+  } else {
+    // Offline fallback
+    if(existing) Object.assign(existing, prod);
+    else products.unshift(prod);
+    saveProducts();
+    renderShop();
+    showToast(editingProductId ? '✅ Produkt upravený!' : '✅ Produkt pridaný!');
+  }
+  closeModal('add-product-modal');
+}
+
+function deleteProductConfirm(){
+  if(!editingProductId) return;
+  const id = editingProductId;
+  doConfirm('Vymazať tento produkt?', 'Táto akcia sa nedá vrátiť späť a prejaví sa na všetkých zariadeniach.', ()=>{
+    if(db){
+      db.ref('shop/products/'+id).remove()
+        .then(()=>showToast('🗑️ Produkt vymazaný'))
+        .catch(err=>showToast('❌ '+err.message));
+    } else {
+      products = products.filter(p=>p.id!==id);
+      saveProducts(); renderShop();
+      showToast('🗑️ Produkt vymazaný');
+    }
+    closeModal('add-product-modal');
+  });
+}
+
+// ══════════════════════════════════════════════
+// ADMIN — ORDERS
+// ══════════════════════════════════════════════
+function renderOrders(){
+  const list = document.getElementById('orders-list');
+  if(!orders.length){
+    list.innerHTML = `<div class="empty-state"><span class="ei">📋</span><p>Zatiaľ žiadne objednávky.</p></div>`;
+    return;
+  }
+  list.innerHTML = '';
+  const statusLabel = {new:'Nová', sent:'Odoslaná', done:'Dokončená'};
+  orders.forEach((order,i)=>{
+    const d = document.createElement('div');
+    d.className = 'order-card';
+    d.style.animationDelay = (i*0.04)+'s';
+    d.innerHTML =
+      `<div class="order-top"><div class="order-name">${escapeHtml(order.customer.name)}</div>`+
+      `<span class="order-status status-${order.status}">${statusLabel[order.status]}</span></div>`+
+      `<div class="order-meta">${order.items.length} položiek · ${fmtPrice(order.total)} · ${escapeHtml(order.payment)}</div>`+
+      `<div class="order-date">${new Date(order.createdAt).toLocaleString('sk-SK')}</div>`;
+    d.onclick = ()=>openOrderDetail(order.id);
+    list.appendChild(d);
+  });
+}
+
+function openOrderDetail(orderId){
+  const order = orders.find(o=>o.id===orderId);
+  if(!order) return;
+  document.getElementById('om-title').textContent = order.id;
+  const body = document.getElementById('om-body');
+
+  const itemsHtml = order.items.map(i=>
+    `<div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border)">`+
+    `<span>${escapeHtml(i.name)}${i.variant?' ('+escapeHtml(i.variant)+')':''} ×${i.qty}</span>`+
+    `<span>${fmtPrice(i.price*i.qty)}</span></div>`
+  ).join('');
+
+  const addrLine = order.pickupPoint
+    ? '🏪 ' + order.pickupPoint
+    : (order.customer.street
+        ? `${order.customer.street} ${order.customer.housenum}, ${order.customer.zip}${order.customer.city ? ' · '+order.customer.city : ''}`
+        : (order.customer.address || ''));
+
+  body.innerHTML =
+    `<div style="background:var(--s2);border-radius:11px;padding:15px;margin-bottom:14px">`+
+      `<div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">${escapeHtml(order.customer.name)}</div>`+
+      `<div style="font-size:12.5px;color:var(--muted2)">${escapeHtml(order.customer.email)}</div>`+
+      (order.customer.phone ? `<div style="font-size:12.5px;color:var(--muted2)">${escapeHtml(order.customer.phone)}</div>` : '')+
+      `<div style="font-size:12.5px;color:var(--muted2);margin-top:5px">📍 ${escapeHtml(addrLine)}</div>`+
+      (order.delivery ? `<div style="font-size:12.5px;color:var(--ac);margin-top:5px;font-weight:600">${escapeHtml(order.delivery)}</div>` : '')+
+    `</div>`+
+    `<div style="margin-bottom:14px">${itemsHtml}`+
+      `<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted2);padding-top:9px"><span>Doprava</span><span>${fmtPrice(order.shipping||0)}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;padding:9px 0 0"><span>Spolu (${escapeHtml(order.payment)})</span><span>${fmtPrice(order.total)}</span></div>`+
+    `</div>`+
+    `<label class="form-lbl">Stav objednávky</label>`+
+    `<div id="om-status-chips" class="owner-chips"></div>`+
+    `<button class="btn-y" onclick="updateOrderStatus('${order.id}')">💾 Uložiť stav</button>`;
+
+  const chips = document.getElementById('om-status-chips');
+  [{val:'new',lbl:'Nová'},{val:'sent',lbl:'Odoslaná'},{val:'done',lbl:'Dokončená'}].forEach(s=>{
+    const c = document.createElement('div');
+    c.className = 'ochip' + (order.status===s.val ? ' on' : '');
+    c.textContent = s.lbl;
+    c.dataset.val = s.val;
+    c.onclick = ()=>{ chips.querySelectorAll('.ochip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); };
+    chips.appendChild(c);
+  });
+
+  openModal('order-modal');
+}
+
+function updateOrderStatus(orderId){
+  const selected = document.querySelector('#om-status-chips .ochip.on');
+  if(!selected) return;
+  const newStatus = selected.dataset.val;
+  const order = orders.find(o=>o.id===orderId);
+  if(order) order.status = newStatus;
+  if(db){
+    db.ref('shop/orders/'+orderId+'/status').set(newStatus).catch(err=>console.warn(err));
+  } else {
+    saveOrders();
+  }
+  closeModal('order-modal');
+  renderOrders();
+  renderAdminBar();
+  showToast('✅ Stav objednávky aktualizovaný');
+}
+
+// ══════════════════════════════════════════════
+// MODALS / CONFIRM / TOAST
+// ══════════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click', e=>{ if(e.target===bg) bg.classList.remove('open'); }));
+
+function doConfirm(title, msg, cb){
+  confirmCb = cb;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  openModal('confirm-modal');
+}
+function confirmYes(){
+  closeModal('confirm-modal');
+  if(confirmCb){ confirmCb(); confirmCb = null; }
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('on'), 2600);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+loadState();
+syncAdminUI();
+updateCartBadge();
+renderShop();
+
+// Hide loading splash once page is ready
+(function(){
+  function hide(){ var sp=document.getElementById('loading-splash'); if(sp){ sp.classList.add('hide'); setTimeout(function(){sp.style.display='none';},350); } }
+  if(document.readyState==='complete') setTimeout(hide,150);
+  else window.addEventListener('load', function(){ setTimeout(hide,150); });
+  setTimeout(hide, 4000); // safety net
+})();
+
+</script>
+</body>
+</html>
